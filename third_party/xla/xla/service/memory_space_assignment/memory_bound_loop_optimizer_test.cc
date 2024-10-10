@@ -1246,6 +1246,80 @@ TEST_F(MemoryBoundLoopOptimizerTest, PrefetchFifoOrderWithOverlap2) {
   EXPECT_EQ(optimizer->MaxAlternateMemoryUsed(), alternate_memory_size);
 }
 
+TEST_F(MemoryBoundLoopOptimizerTest, PrefetchFifoOrderWithoutOverlap2) {
+  // Same as PrefetchFifoOrderWithoutOverlap, except that, we reduce the size of
+  // alternate memory, such that only one of param0 and param1 can be
+  // prefetched. Additionally, we add many more small prefetches, such that,
+  // during the prefetch of param0 or param1, a valid copy start time is found
+  // with desired copy ratio, but not with complete copy ratio, early forcing
+  // param2. After finding a copy start time with the desired copy ratio, when
+  // trying to find a better copy start time with complete copy ratio, more
+  // prefetches are temporarily early forced, but restored to their original
+  // state later.
+  absl::string_view hlo_loop_str = R"(
+    $op0 = f32[1,4] add(f32[1,4] $prev_op13, f32[1,4] $prev_op14)
+    $op1 = f32[8,4] add(f32[8,4] $param0, f32[8,4] $param1)
+    $op2 = f32[1,4] add(f32[1,4] $op0, f32[1,4] $param9)
+    $op3 = f32[1,4] add(f32[1,4] $param7, f32[1,4] $param8)
+    $op4 = f32[1,4] add(f32[1,4] $param5, f32[1,4] $param6)
+    $op5 = f32[1,4] add(f32[1,4] $param4, f32[1,4] $op3)
+    $op6 = f32[1,4] add(f32[1,4] $op4, f32[1,4] $param3)
+    $op7 = f32[1,4] add(f32[1,4] $op5, f32[1,4] $op2)
+    $op8 = f32[1,4] add(f32[1,4] $op6, f32[1,4] $op7)
+    $op9 = f32[1,4] add(f32[1,4] $op7, f32[1,4] $op8)
+    $op10 = f32[1,4] add(f32[1,4] $op8, f32[1,4] $op9)
+    $op11 = f32[1,4] add(f32[1,4] $op9, f32[1,4] $op10)
+    $op12 = f32[1,4] add(f32[1,4] $op10, f32[1,4] $op11)
+    $op13 = f32[1,4] add(f32[1,4] $op11, f32[1,4] $op12)
+    $op14 = f32[1,4] add(f32[1,4] $param2, f32[1,4] $op13)
+  )";
+
+  int loop_start_idx;
+  MemoryBoundLoopOptimizer* optimizer;
+  int64_t alternate_memory_size = 384;
+  TF_ASSERT_OK_AND_ASSIGN(
+      auto module, ParseAndCreateOptimizer(hlo_loop_str, alternate_memory_size,
+                                           loop_start_idx, &optimizer));
+
+  optimizer->Optimize();
+  std::vector<const CopyAllocation*> prefetches;
+  for (const MemoryBoundLoopOptimizer::LoopValue& loop_value :
+       optimizer->loop_values()) {
+    if (!loop_value.allocations.empty() &&
+        loop_value.allocations.back()->is_copy_allocation()) {
+      prefetches.push_back(static_cast<const CopyAllocation*>(
+          loop_value.allocations.back().get()));
+    }
+  }
+  EXPECT_EQ(prefetches.size(), 9);
+  for (const CopyAllocation* prefetch : prefetches) {
+    const HloUse& use = *prefetch->uses().begin();
+    if (use.instruction->name() == "op14") {
+      EXPECT_EQ(prefetch->copy_done_schedule_before(), 14);
+      EXPECT_EQ(prefetch->copy_start_schedule_after(), 6);
+    } else if (use.instruction->name() == "op1") {
+      EXPECT_EQ(prefetch->copy_start_schedule_after(), 6);
+      EXPECT_EQ(prefetch->copy_done_schedule_before(), 1);
+    }
+  }
+
+  EXPECT_NEAR(optimizer->CalculateExecutionTime(), 16.7083, 1e-3);
+  const std::vector<int64_t>& remaining_memory = optimizer->RemainingMemory();
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(0), 176);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(1), 208);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(2), 112);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(3), 112);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(4), 112);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(5), 96);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(6), 80);
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(7), 208);
+  for (int i = 8; i < 14; ++i) {
+    EXPECT_EQ(alternate_memory_size - remaining_memory.at(i), 192);
+  }
+  EXPECT_EQ(alternate_memory_size - remaining_memory.at(14), 176);
+  EXPECT_EQ(optimizer->MaxAlternateMemoryUsed(), alternate_memory_size - 128);
+}
+
 TEST_F(MemoryBoundLoopOptimizerTest, OptimizerEndToEnd) {
   absl::string_view hlo_loop_str = R"(
     $op0 = f32[1,4] add(f32[1,4] $prev_op13, f32[1,4] $prev_op14)
