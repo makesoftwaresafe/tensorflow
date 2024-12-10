@@ -13,21 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "xla/python/nb_helpers.h"
+#ifndef XLA_TESTS_HLO_PJRT_TEST_BASE_H_
+#define XLA_TESTS_HLO_PJRT_TEST_BASE_H_
 
-#include <Python.h>
-
-#include "nanobind/nanobind.h"
-
-namespace nb = nanobind;
+#include "xla/tests/hlo_runner_agnostic_test_base.h"
+#include "xla/util.h"
+#include "xla/xla_data.pb.h"
 
 namespace xla {
 
-bool nb_isinstance(nanobind::handle inst, nanobind::handle cls) {
-  int ret = PyObject_IsInstance(inst.ptr(), cls.ptr());
-  if (ret == -1) {
-    throw nb::python_error();
-  }
-  return ret;
-}
+class HloPjRtTestBase : public HloRunnerAgnosticTestBase {
+ protected:
+  // This uses the SE interpreter backend for the reference backend and
+  // automatically finds a PjRt backend for the test backend.
+  explicit HloPjRtTestBase(
+      bool verifier_layout_sensitive = false,
+      bool allow_mixed_precision_in_hlo_verifier = true,
+      HloPredicate instruction_can_change_layout_func = {});
+};
+
 }  // namespace xla
+
+#endif  // XLA_TESTS_HLO_PJRT_TEST_BASE_H_

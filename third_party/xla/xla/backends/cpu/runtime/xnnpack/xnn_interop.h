@@ -13,21 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "xla/service/gpu/flag_utils.h"
+#ifndef XLA_BACKENDS_CPU_RUNTIME_XNNPACK_XNN_INTEROP_H_
+#define XLA_BACKENDS_CPU_RUNTIME_XNNPACK_XNN_INTEROP_H_
 
-#include "xla/service/hlo_module_config.h"
+#include "xnnpack.h"  // IWYU pragma: keep
 
-namespace xla {
-namespace gpu {
+namespace xla::cpu {}
 
-float ExecTimeOptimizationEffort(const HloModuleConfig& config) {
-  float flag_exec_effort =
-      config.debug_options().xla_experimental_exec_time_optimization_effort();
-  if (flag_exec_effort != 0.0) {
-    return flag_exec_effort;
-  }
-  return config.exec_time_optimization_effort();
-}
-
-}  // namespace gpu
-}  // namespace xla
+#endif  // XLA_BACKENDS_CPU_RUNTIME_XNNPACK_XNN_INTEROP_H_
