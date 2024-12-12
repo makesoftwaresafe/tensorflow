@@ -13,21 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "xla/python/nb_helpers.h"
+diff --git a/src/cpu/platform.cpp b/src/cpu/platform.cpp
+index 65b887ea21..eabdb827bd 100644
+--- a/src/cpu/platform.cpp
++++ b/src/cpu/platform.cpp
+@@ -117,6 +117,8 @@ bool has_data_type_support(data_type_t data_type) {
+ #if defined(USE_CBLAS) && defined(BLAS_HAS_SBGEMM) && defined(__MMA__)
+             return true;
+ #endif
++#elif DNNL_AARCH64_USE_ACL
++            return arm_compute::CPUInfo::get().has_bf16();
+ #else
+             return false;
+ #endif
+-- 
+2.34.1
 
-#include <Python.h>
-
-#include "nanobind/nanobind.h"
-
-namespace nb = nanobind;
-
-namespace xla {
-
-bool nb_isinstance(nanobind::handle inst, nanobind::handle cls) {
-  int ret = PyObject_IsInstance(inst.ptr(), cls.ptr());
-  if (ret == -1) {
-    throw nb::python_error();
-  }
-  return ret;
-}
-}  // namespace xla

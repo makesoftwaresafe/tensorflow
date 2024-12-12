@@ -13,20 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "xla/service/gpu/flag_utils.h"
+#include <string>
 
-#include "xla/service/hlo_module_config.h"
+#include "absl/status/status.h"
+#include "mlir/Pass/PassManager.h"
+#include "xla/service/gpu/fusions/triton/compilation_pipeline.h"
 
 namespace xla {
 namespace gpu {
 
-float ExecTimeOptimizationEffort(const HloModuleConfig& config) {
-  float flag_exec_effort =
-      config.debug_options().xla_experimental_exec_time_optimization_effort();
-  if (flag_exec_effort != 0.0) {
-    return flag_exec_effort;
-  }
-  return config.exec_time_optimization_effort();
+absl::Status CreateTritonPipeline(
+    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
+    int num_stages, mlir::triton::nvidia_gpu::ClusterInfo& out_cluster_info) {
+  return absl::UnimplementedError("not supported for this build configuration");
 }
 
 }  // namespace gpu

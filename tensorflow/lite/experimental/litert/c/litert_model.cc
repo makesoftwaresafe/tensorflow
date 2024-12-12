@@ -33,7 +33,8 @@ static const char* LiteRtDefaultSignatureKey = LITERT_DEFAULT_SIGNATURE_KEY;
 // Model
 //
 
-LiteRtStatus LiteRtLoadModelFromFile(const char* filename, LiteRtModel* model) {
+LiteRtStatus LiteRtCreateModelFromFile(const char* filename,
+                                       LiteRtModel* model) {
   if (!filename || !model) {
     return kLiteRtStatusErrorInvalidArgument;
   }
@@ -46,8 +47,9 @@ LiteRtStatus LiteRtLoadModelFromFile(const char* filename, LiteRtModel* model) {
   return kLiteRtStatusOk;
 }
 
-LiteRtStatus LiteRtLoadModelFromBuffer(const void* buffer_addr,
-                                       size_t buffer_size, LiteRtModel* model) {
+LiteRtStatus LiteRtCreateModelFromBuffer(const void* buffer_addr,
+                                         size_t buffer_size,
+                                         LiteRtModel* model) {
   if (!buffer_addr || !buffer_size || !model) {
     return kLiteRtStatusErrorInvalidArgument;
   }
@@ -128,7 +130,7 @@ LiteRtStatus LiteRtGetModelSignature(LiteRtModel model,
   return kLiteRtStatusOk;
 }
 
-void LiteRtModelDestroy(LiteRtModel model) { delete model; }
+void LiteRtDestroyModel(LiteRtModel model) { delete model; }
 
 LiteRtStatus LiteRtPushOp(LiteRtOpList op_list, LiteRtOp op) {
   if (!op_list || !op) {
@@ -389,6 +391,24 @@ LiteRtStatus LiteRtGetPerTensorQuantization(
   } else if (tensor->q_type_id != kLiteRtQuantizationPerTensor) {
     return kLiteRtStatusErrorInvalidIrType;
   }
-  *per_tensor_quantization = tensor->q_type_detail.per_tensor;
+  per_tensor_quantization->scale = tensor->q_type_detail.per_tensor.scale;
+  per_tensor_quantization->zero_point =
+      tensor->q_type_detail.per_tensor.zero_point;
+  return kLiteRtStatusOk;
+}
+
+LiteRtStatus LiteRtGetPerChannelQuantization(
+    LiteRtTensor tensor,
+    LiteRtQuantizationPerChannel* per_channel_quantization) {
+  if (tensor->q_type_id != kLiteRtQuantizationPerChannel) {
+    return kLiteRtStatusErrorInvalidIrType;
+  }
+  per_channel_quantization->scales = tensor->q_type_detail.per_channel.scales;
+  per_channel_quantization->zero_points =
+      tensor->q_type_detail.per_channel.zero_points;
+  per_channel_quantization->num_channels =
+      tensor->q_type_detail.per_channel.num_channels;
+  per_channel_quantization->quantized_dimension =
+      tensor->q_type_detail.per_channel.quantized_dimension;
   return kLiteRtStatusOk;
 }

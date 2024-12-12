@@ -24,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "tensorflow/lite/experimental/litert/c/litert_common.h"
@@ -177,6 +176,15 @@ class Tensor : public internal::NonOwnedHandle<LiteRtTensor> {
     internal::AssertOk(LiteRtGetPerTensorQuantization, Get(),
                        &per_tensor_quantization);
     return per_tensor_quantization;
+  }
+
+  LiteRtQuantizationPerChannel PerChannelQuantization() const {
+    internal::AssertEq([&]() { return QTypeId(); },
+                       kLiteRtQuantizationPerChannel);
+    LiteRtQuantizationPerChannel per_channel_quantization;
+    internal::AssertOk(LiteRtGetPerChannelQuantization, Get(),
+                       &per_channel_quantization);
+    return per_channel_quantization;
   }
 
   bool HasWeights() const {
@@ -353,7 +361,7 @@ class Signature : public internal::NonOwnedHandle<LiteRtSignature> {
 };
 
 // Model. C++ equivalent of LiteRtModel.
-class Model : public internal::Handle<LiteRtModel, LiteRtModelDestroy> {
+class Model : public internal::Handle<LiteRtModel, LiteRtDestroyModel> {
  public:
   Model() = default;
 
@@ -365,19 +373,19 @@ class Model : public internal::Handle<LiteRtModel, LiteRtModelDestroy> {
     return Model(model, /*owned=*/false);
   }
 
-  static Expected<Model> LoadFromFile(const std::string& filename) {
+  static Expected<Model> CreateFromFile(const std::string& filename) {
     LiteRtModel model;
-    if (auto status = LiteRtLoadModelFromFile(filename.c_str(), &model);
+    if (auto status = LiteRtCreateModelFromFile(filename.c_str(), &model);
         status != kLiteRtStatusOk) {
       return Unexpected(status, "Failed to load model from file");
     }
     return CreateFromOwnedHandle(model);
   }
 
-  static Expected<Model> LoadFromBuffer(BufferRef<uint8_t> buffer) {
+  static Expected<Model> CreateFromBuffer(BufferRef<uint8_t> buffer) {
     LiteRtModel model;
     if (auto status =
-            LiteRtLoadModelFromBuffer(buffer.Data(), buffer.Size(), &model);
+            LiteRtCreateModelFromBuffer(buffer.Data(), buffer.Size(), &model);
         status != kLiteRtStatusOk) {
       return Unexpected(status, "Failed to load model from buffer");
     }
@@ -474,7 +482,7 @@ class Model : public internal::Handle<LiteRtModel, LiteRtModelDestroy> {
   // Parameter `owned` indicates if the created TensorBuffer object should take
   // ownership of the provided `tensor_buffer` handle.
   Model(LiteRtModel model, bool owned)
-      : internal::Handle<LiteRtModel, LiteRtModelDestroy>(model, owned) {}
+      : internal::Handle<LiteRtModel, LiteRtDestroyModel>(model, owned) {}
 };
 
 }  // namespace litert
