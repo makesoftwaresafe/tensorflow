@@ -167,7 +167,6 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   opts.set_xla_gpu_nccl_termination_timeout_seconds(-1);
   opts.set_xla_gpu_enable_shared_constants(true);
   opts.set_xla_gpu_enable_nccl_user_buffers(false);
-  opts.set_xla_gpu_experimental_enable_nvshmem(false);
   opts.set_xla_gpu_enable_nccl_comm_splitting(true);
   opts.set_xla_gpu_nccl_init_max_rank_per_root_ratio(0);
 
@@ -205,7 +204,6 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   opts.set_xla_gpu_memory_limit_slop_factor(95);
   opts.set_xla_gpu_enable_highest_priority_async_stream(true);
 
-  opts.set_xla_gpu_enable_pipelined_collectives(false);
   opts.set_xla_gpu_enable_pipelined_all_reduce(false);
   opts.set_xla_gpu_enable_pipelined_all_gather(false);
   opts.set_xla_gpu_enable_pipelined_reduce_scatter(true);
@@ -1583,11 +1581,6 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       "allocator config must also be set to a non-zero value that is large "
       "enough to meet peak collective memory usage."));
   flag_list->push_back(tsl::Flag(
-      "xla_gpu_experimental_enable_nvshmem",
-      bool_setter_for(&DebugOptions::set_xla_gpu_experimental_enable_nvshmem),
-      debug_options->xla_gpu_experimental_enable_nvshmem(),
-      "Enables NVSHMEM."));
-  flag_list->push_back(tsl::Flag(
       "xla_gpu_temp_buffer_use_separate_color",
       bool_setter_for(
           &DebugOptions::set_xla_gpu_temp_buffer_use_separate_color),
@@ -1718,12 +1711,6 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
           &DebugOptions::set_xla_gpu_enable_highest_priority_async_stream),
       debug_options->xla_gpu_enable_highest_priority_async_stream(),
       "Enable async stream to have the highest priority."));
-  flag_list->push_back(tsl::Flag(
-      "xla_gpu_enable_pipelined_collectives",
-      bool_setter_for(&DebugOptions::set_xla_gpu_enable_pipelined_collectives),
-      debug_options->xla_gpu_enable_pipelined_collectives(),
-      "Enable pipelinling of collective instructions (all-reduce, all-gather, "
-      "and reduce-scatter)."));
   flag_list->push_back(tsl::Flag(
       "xla_gpu_enable_pipelined_all_reduce",
       bool_setter_for(&DebugOptions::set_xla_gpu_enable_pipelined_all_reduce),
